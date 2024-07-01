@@ -1,0 +1,58 @@
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    environment:
+      MYSQL_HOST: db
+      DB_JDBC_URL: "jdbc:mysql://spring:ThePassword@db:3306/library?allowPublicKeyRetrieval=True&useSSL=false"
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: "service_healthy"
+    ports:
+      - "9000:8080"
+    networks:
+      - bookcase-network
+
+  db:
+    image: mysql:latest
+    restart: always
+    environment:
+      MYSQL_DATABASE: library
+      MYSQL_USER: spring
+      MYSQL_PASSWORD: ThePassword
+      MYSQL_ROOT_PASSWORD: ThisIsClassified
+    env_file:
+      - .env
+    volumes:
+      - bookcase_data:/var/lib/mysql
+    networks:
+      - bookcase-network
+    healthcheck:
+      test: "mysqladmin ping -h localhost -u root -pThisIsClassified --protocol=tcp 2> /dev/null"
+      interval: 2s
+      timeout: 20s
+      retries: 10
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    restart: no
+    depends_on:
+      - db
+    environment:
+      PMA_HOST: db
+      MYSQL_ROOT_PASSWORD: ThisIsClassified
+    env_file:
+      - .env
+    ports:
+      - '9001:80'
+    networks:
+      - bookcase-network
+networks:
+  bookcase-network:
+    name: bookcase-network
+    driver: bridge
+volumes:
+  bookcase_data:
