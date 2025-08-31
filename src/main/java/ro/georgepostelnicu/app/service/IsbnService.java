@@ -10,6 +10,9 @@ import static ro.georgepostelnicu.app.model.EntityName.BOOK;
 
 @Service
 public class IsbnService {
+    public static final String ISBN_IS_REQUIRED = "ISBN is required!";
+    public static final String INVALID_ISBN_CHECK_DIGIT = "Invalid ISBN check digit";
+    public static final String INVALID_ISBN = "Invalid ISBN";
     private final Pattern pattern;
 
     public IsbnService() {
@@ -17,6 +20,10 @@ public class IsbnService {
     }
 
     public void isValid(String subject) {
+        if (subject == null) {
+            throw new EntityValidationException(BOOK, ISBN_IS_REQUIRED);
+        }
+        
         Matcher matcher = pattern.matcher(subject);
 
         if (matcher.matches()) {
@@ -53,10 +60,10 @@ public class IsbnService {
             }
 
             if (!check.equals(last)) {
-                throw new EntityValidationException(BOOK, "Invalid ISBN check digit");
+                throw new EntityValidationException(BOOK, INVALID_ISBN_CHECK_DIGIT);
             }
         } else {
-            throw new EntityValidationException(BOOK, "Invalid ISBN");
+            throw new EntityValidationException(BOOK, INVALID_ISBN);
         }
     }
 }
