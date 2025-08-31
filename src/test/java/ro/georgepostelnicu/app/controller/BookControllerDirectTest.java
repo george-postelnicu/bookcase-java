@@ -4,13 +4,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import ro.georgepostelnicu.app.AbstractIntegrationTest;
 import ro.georgepostelnicu.app.dto.book.BookDto;
 import ro.georgepostelnicu.app.dto.book.BookResponseDto;
 import ro.georgepostelnicu.app.model.Book;
-import ro.georgepostelnicu.app.model.BookSearchCriteria;
 import ro.georgepostelnicu.app.service.BookService;
 
 import java.net.URI;
@@ -35,6 +34,7 @@ class BookControllerDirectTest extends AbstractIntegrationTest {
     }
 
     @Test
+    @Transactional
     void search_create_read_update_delete_cover_mapping_lines() {
         // Seed some books via service so search has data
         BookDto b1 = landscapesOfIdentity();
@@ -70,7 +70,7 @@ class BookControllerDirectTest extends AbstractIntegrationTest {
         assertNotNull(created.getBody());
         assertEquals(toCreate.getName(), created.getBody().getName());
 
-        Long createdId = service.read(saved1.getId()).getId(); // ensure service works and id accessible
+        service.read(saved1.getId()); // ensure service works and id accessible
 
         // 3) read mapping and return
         ResponseEntity<BookResponseDto> readResp = controller.read(saved2.getId());
@@ -80,11 +80,11 @@ class BookControllerDirectTest extends AbstractIntegrationTest {
 
         // 4) update mapping and return
         BookDto upd = conflictsAndAdaptations();
-        upd.setName("Conflicts and adaptations (Updated)");
+        upd.setName("Conflicts and adaptations. ");
         ResponseEntity<BookResponseDto> updated = controller.update(upd, saved2.getId());
         assertEquals(200, updated.getStatusCode().value());
         assertNotNull(updated.getBody());
-        assertEquals("Conflicts and adaptations (Updated)", updated.getBody().getName());
+        assertEquals("Conflicts and adaptations. ", updated.getBody().getName());
 
         // 5) delete invocation
         controller.delete(created.getBody().getId());

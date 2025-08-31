@@ -138,7 +138,7 @@ class KeywordControllerTest extends AbstractIntegrationTest {
         Keyword keyword = service.create(keywordDto);
 
         String responseString = this.mockMvc.perform(
-                        get(STR."\{KEYWORDS}/\{keyword.getId()}")
+                        get(KEYWORDS + "/" + keyword.getId())
                                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
@@ -154,7 +154,7 @@ class KeywordControllerTest extends AbstractIntegrationTest {
     @Test
     void read_shouldThrowException_whenIdIsNotFound() throws Exception {
         String responseString = this.mockMvc.perform(
-                        get(STR."\{KEYWORDS}/\{ID_NOT_FOUND}")
+                        get(KEYWORDS + "/" + ID_NOT_FOUND)
                                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
@@ -176,7 +176,7 @@ class KeywordControllerTest extends AbstractIntegrationTest {
         keywordDto.setName(FINANCE);
 
         String responseString = this.mockMvc.perform(
-                        put(STR."\{KEYWORDS}/\{keyword.getId()}")
+                        put(KEYWORDS + "/" + keyword.getId())
                                 .content(objectMapper.writeValueAsString(keywordDto))
                                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
@@ -194,7 +194,7 @@ class KeywordControllerTest extends AbstractIntegrationTest {
     void update_shouldThrowException_whenIdIsNotFound() throws Exception {
         KeywordDto keywordDto = new KeywordDto(ART);
         String responseString = this.mockMvc.perform(
-                        put(STR."\{KEYWORDS}/\{ID_NOT_FOUND}")
+                        put(KEYWORDS + "/" + ID_NOT_FOUND)
                                 .content(objectMapper.writeValueAsString(keywordDto))
                                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound())
@@ -215,7 +215,7 @@ class KeywordControllerTest extends AbstractIntegrationTest {
         Keyword keyword = service.create(keywordDto);
 
         this.mockMvc.perform(
-                        delete(STR."\{KEYWORDS}/\{keyword.getId()}")
+                        delete(KEYWORDS + "/" + keyword.getId())
                                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNoContent());
     }
@@ -223,7 +223,7 @@ class KeywordControllerTest extends AbstractIntegrationTest {
     @Test
     void delete_shouldThrowException_whenIdIsNotFound() throws Exception {
         String responseString = this.mockMvc.perform(
-                        delete(STR."\{KEYWORDS}/\{ID_NOT_FOUND}")
+                        delete(KEYWORDS + "/" + ID_NOT_FOUND)
                                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))

@@ -139,7 +139,7 @@ class AuthorControllerTest extends AbstractIntegrationTest {
         Author author = service.create(dto);
 
         String responseString = this.mockMvc.perform(
-                        get(STR."\{AUTHORS}/\{author.getId()}")
+                        get(AUTHORS + "/" + author.getId())
                                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
@@ -155,7 +155,7 @@ class AuthorControllerTest extends AbstractIntegrationTest {
     @Test
     void read_shouldThrowException_whenIdIsNotFound() throws Exception {
         String responseString = this.mockMvc.perform(
-                        get(STR."\{AUTHORS}/\{ID_NOT_FOUND}")
+                        get(AUTHORS + "/" + ID_NOT_FOUND)
                                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
@@ -177,7 +177,7 @@ class AuthorControllerTest extends AbstractIntegrationTest {
         authorDto.setName(KADI);
 
         String responseString = this.mockMvc.perform(
-                        put(STR."\{AUTHORS}/\{author.getId()}")
+                        put(AUTHORS + "/" + author.getId())
                                 .content(objectMapper.writeValueAsString(authorDto))
                                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
@@ -195,7 +195,7 @@ class AuthorControllerTest extends AbstractIntegrationTest {
     void update_shouldThrowException_whenIdIsNotFound() throws Exception {
         AuthorDto authorDto = new AuthorDto(LINDA);
         String responseString = this.mockMvc.perform(
-                        put(STR."\{AUTHORS}/\{ID_NOT_FOUND}")
+                        put(AUTHORS + "/" + ID_NOT_FOUND)
                                 .content(objectMapper.writeValueAsString(authorDto))
                                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound())
@@ -216,7 +216,7 @@ class AuthorControllerTest extends AbstractIntegrationTest {
         Author author = service.create(authorDto);
 
         this.mockMvc.perform(
-                        delete(STR."\{AUTHORS}/\{author.getId()}")
+                        delete(AUTHORS + "/" + author.getId())
                                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNoContent());
     }
@@ -224,7 +224,7 @@ class AuthorControllerTest extends AbstractIntegrationTest {
     @Test
     void delete_shouldThrowException_whenIdIsNotFound() throws Exception {
         String responseString = this.mockMvc.perform(
-                        delete(STR."\{AUTHORS}/\{ID_NOT_FOUND}")
+                        delete(AUTHORS + "/" + ID_NOT_FOUND)
                                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))

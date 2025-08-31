@@ -115,7 +115,7 @@ class BookControllerTest extends AbstractIntegrationTest {
         Book book = service.create(requestDto);
 
         String responseString = mockMvc.perform(
-                        get(STR."\{BOOKS}/{id}", book.getId())
+                        get(BOOKS + "/{id}", book.getId())
                                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
@@ -143,7 +143,7 @@ class BookControllerTest extends AbstractIntegrationTest {
     @Test
     void read_shouldThrowException_whenIdDoesNotExist() throws Exception {
         String responseString = mockMvc.perform(
-                        get(STR."\{BOOKS}/{id}", ID_NOT_FOUND)
+                        get(BOOKS + "/{id}", ID_NOT_FOUND)
                                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
@@ -165,7 +165,7 @@ class BookControllerTest extends AbstractIntegrationTest {
         BookDto updatedDto = conflictsAndAdaptations();
 
         String responseString = mockMvc.perform(
-                        put(STR."\{BOOKS}/{id}", book.getId())
+                        put(BOOKS + "/{id}", book.getId())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(updatedDto)))
                 .andExpect(status().isOk())
@@ -199,7 +199,7 @@ class BookControllerTest extends AbstractIntegrationTest {
         service.create(existingDto);
 
         String responseString = mockMvc.perform(
-                        put(STR."\{BOOKS}/{id}", book.getId())
+                        put(BOOKS + "/{id}", book.getId())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(existingDto)))
                 .andExpect(status().isBadRequest())
@@ -220,7 +220,7 @@ class BookControllerTest extends AbstractIntegrationTest {
         Book book = service.create(requestDto);
 
         mockMvc.perform(
-                        delete(STR."\{BOOKS}/{id}", book.getId())
+                        delete(BOOKS + "/{id}", book.getId())
                                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk());
 
@@ -230,7 +230,7 @@ class BookControllerTest extends AbstractIntegrationTest {
     @Test
     void delete_shouldThrowException_whenIdDoesNotExist() throws Exception {
         mockMvc.perform(
-                        delete(STR."\{BOOKS}/{id}", ID_NOT_FOUND)
+                        delete(BOOKS + "/{id}", ID_NOT_FOUND)
                                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound());
     }

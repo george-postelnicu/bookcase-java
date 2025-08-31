@@ -8,6 +8,9 @@ public class StringUtil {
     public static final String LIKE = "%";
     public static final String SPACE = " ";
 
+    private StringUtil() {
+    }
+
     public static String splitCapitalizeAndJoin(String text) {
         return Arrays.stream(text.split(SPACE, -1))
                 .map(s -> s.isEmpty() ? "" : capitalizeFirstLetter(s))

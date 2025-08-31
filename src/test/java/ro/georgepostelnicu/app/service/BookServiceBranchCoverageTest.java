@@ -13,8 +13,9 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static ro.georgepostelnicu.app.DataCommon.*;
-import static ro.georgepostelnicu.app.model.EntityName.BOOK;
+import static ro.georgepostelnicu.app.exception.EntityAlreadyExistException.ENTITY_ALREADY_HAS_COLLECTION;
 import static ro.georgepostelnicu.app.exception.EntityValidationException.ENTITY_VALIDATION_FAILURE;
+import static ro.georgepostelnicu.app.model.EntityName.BOOK;
 
 class BookServiceBranchCoverageTest extends AbstractIntegrationTest {
 
@@ -52,11 +53,11 @@ class BookServiceBranchCoverageTest extends AbstractIntegrationTest {
 
         // Second book with different name but same ISBN
         BookDto dupIsbn = landscapesOfIdentity();
-        dupIsbn.setName("Landscapes Copy");
+        String name = "Landscapes Copy";
+        dupIsbn.setName(name);
 
         EntityAlreadyExistException ex = assertThrows(EntityAlreadyExistException.class, () -> service.create(dupIsbn));
-        assertTrue(ex.getMessage().contains("already has"));
-        assertTrue(ex.getMessage().contains(dupIsbn.getIsbn()));
+        assertEquals(String.format(ENTITY_ALREADY_HAS_COLLECTION, BOOK, Set.of(name, dupIsbn.getIsbn())), ex.getMessage());
     }
 
     @Test
@@ -66,13 +67,14 @@ class BookServiceBranchCoverageTest extends AbstractIntegrationTest {
         Book saved = service.create(first);
         assertNotNull(saved.getId());
 
-        // Second book with different name but same barcode
+        // Second book with different name and isbn but the same barcode
         BookDto dupBarcode = conflictsAndAdaptations();
-        dupBarcode.setName("Conflicts Copy");
+        String name = "Conflicts Copy";
+        dupBarcode.setIsbn("9780596520687");
+        dupBarcode.setName(name);
 
         EntityAlreadyExistException ex = assertThrows(EntityAlreadyExistException.class, () -> service.create(dupBarcode));
-        assertTrue(ex.getMessage().contains("already has"));
-        assertTrue(ex.getMessage().contains(dupBarcode.getBarcode()));
+        assertEquals(String.format(ENTITY_ALREADY_HAS_COLLECTION, BOOK, Set.of(name, dupBarcode.getBarcode())), ex.getMessage());
     }
 
     @Test
@@ -83,12 +85,11 @@ class BookServiceBranchCoverageTest extends AbstractIntegrationTest {
 
         // Attempt to update b1's ISBN to b2's ISBN
         BookDto updated = landscapesOfIdentity();
-        updated.setIsbn("ISBN 978-9949-9078-6-1"); // ISBN of b2
-        updated.setName(b1.getName()); // keep same name to avoid name duplicate branch
+        updated.setIsbn(b2.getIsbn()); // ISBN of b2
+        updated.setName(b1.getName()); // keep the same name to avoid name duplicate branch
 
         EntityAlreadyExistException ex = assertThrows(EntityAlreadyExistException.class, () -> service.update(b1.getId(), updated));
-        assertTrue(ex.getMessage().contains("already has"));
-        assertTrue(ex.getMessage().contains("978-9949-9078-6-1"));
+        assertEquals(String.format(ENTITY_ALREADY_HAS_COLLECTION, BOOK, Set.of(b1.getName(), b2.getIsbn())), ex.getMessage());
     }
 
     @Test
@@ -100,10 +101,9 @@ class BookServiceBranchCoverageTest extends AbstractIntegrationTest {
         // Attempt to update b1's barcode to b2's barcode
         BookDto updated = landscapesOfIdentity();
         updated.setBarcode(b2.getBarcode());
-        updated.setName(b1.getName()); // keep same name
+        updated.setName(b1.getName()); // keep the same name
 
         EntityAlreadyExistException ex = assertThrows(EntityAlreadyExistException.class, () -> service.update(b1.getId(), updated));
-        assertTrue(ex.getMessage().contains("already has"));
-        assertTrue(ex.getMessage().contains(b2.getBarcode()));
+        assertEquals(String.format(ENTITY_ALREADY_HAS_COLLECTION, BOOK, Set.of(b1.getName(), b2.getBarcode())), ex.getMessage());
     }
 }

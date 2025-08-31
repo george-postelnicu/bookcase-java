@@ -145,7 +145,7 @@ class LanguageControllerTest extends AbstractIntegrationTest {
 
         String responseString = this.mockMvc
                 .perform(
-                        get(STR."\{LANGUAGES}/\{createdLanguage.getId()}")
+                        get(LANGUAGES + "/" + createdLanguage.getId())
                                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
@@ -162,7 +162,7 @@ class LanguageControllerTest extends AbstractIntegrationTest {
     void read_shouldThrowException_whenIdIsNotFound() throws Exception {
         String responseString = this.mockMvc
                 .perform(
-                        get(STR."\{LANGUAGES}/\{ID_NOT_FOUND}")
+                        get(LANGUAGES + "/" + ID_NOT_FOUND)
                                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
@@ -183,7 +183,7 @@ class LanguageControllerTest extends AbstractIntegrationTest {
 
         String responseString = this.mockMvc
                 .perform(
-                        put(STR."\{LANGUAGES}/\{createdLanguage.getId()}")
+                        put(LANGUAGES + "/" + createdLanguage.getId())
                                 .content(objectMapper.writeValueAsString(updateDto))
                                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
@@ -203,7 +203,7 @@ class LanguageControllerTest extends AbstractIntegrationTest {
 
         String responseString = this.mockMvc
                 .perform(
-                        put(STR."\{LANGUAGES}/\{ID_NOT_FOUND}")
+                        put(LANGUAGES + "/" + ID_NOT_FOUND)
                                 .content(objectMapper.writeValueAsString(createDto))
                                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound())
@@ -225,7 +225,7 @@ class LanguageControllerTest extends AbstractIntegrationTest {
 
         this.mockMvc
                 .perform(
-                        delete(STR."\{LANGUAGES}/\{createdLanguage.getId()}")
+                        delete(LANGUAGES + "/" + createdLanguage.getId())
                                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNoContent());
     }
@@ -234,7 +234,7 @@ class LanguageControllerTest extends AbstractIntegrationTest {
     void delete_shouldThrowException_whenIdIsNotFound() throws Exception {
         String responseString = this.mockMvc
                 .perform(
-                        delete(STR."\{LANGUAGES}/\{ID_NOT_FOUND}")
+                        delete(LANGUAGES + "/" + ID_NOT_FOUND)
                                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
