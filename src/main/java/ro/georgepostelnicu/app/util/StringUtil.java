@@ -9,8 +9,8 @@ public class StringUtil {
     public static final String SPACE = " ";
 
     public static String splitCapitalizeAndJoin(String text) {
-        return Arrays.stream(text.split(SPACE))
-                .map(StringUtil::capitalizeFirstLetter)
+        return Arrays.stream(text.split(SPACE, -1))
+                .map(s -> s.isEmpty() ? "" : capitalizeFirstLetter(s))
                 .collect(Collectors.joining(SPACE));
     }
 
