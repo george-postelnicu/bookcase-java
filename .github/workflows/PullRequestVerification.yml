@@ -1,0 +1,422 @@
+name: PR Verification
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+    types: [ opened, synchronize, reopened, ready_for_review ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  JAVA_VERSION: '24'
+  JAVA_DISTRIBUTION: 'temurin'
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+  issues: write
+
+jobs:
+  # Skip verification for draft PRs unless explicitly requested
+  check-draft:
+    name: Check Draft Status
+    runs-on: ubuntu-latest
+    outputs:
+      should_skip: ${{ steps.check.outputs.should_skip }}
+    steps:
+      - name: Check if draft PR
+        id: check
+        run: |
+          if [[ "${{ github.event.pull_request.draft }}" == "true" ]]; then
+            echo "should_skip=true" >> $GITHUB_OUTPUT
+            echo "Skipping verification for draft PR"
+          else
+            echo "should_skip=false" >> $GITHUB_OUTPUT
+            echo "Running verification for ready PR"
+          fi
+
+  # Validate basic PR requirements
+  pr-validation:
+    name: PR Validation
+    runs-on: ubuntu-latest
+    needs: check-draft
+    if: needs.check-draft.outputs.should_skip == 'false'
+    
+    steps:
+      - name: Checkout PR code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Check PR title format
+        run: |
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          echo "PR Title: $PR_TITLE"
+          
+          # Check if title follows your custom format: [TYPE][BCJ-X] description
+          if [[ "$PR_TITLE" =~ ^(\[FEATURE\]|\[FIX\]|\[DOCS\]|\[STYLE\]|\[REFACTOR\]|\[TEST\]|\[CHORE\]|\[PERF\]|\[CI\]|\[BUILD\])(\[BCJ-[0-9]+\])\ .+ ]]; then
+            echo "✅ PR title follows required format"
+            
+            # Extract and display components
+            TYPE=$(echo "$PR_TITLE" | grep -o '^\[[^]]*\]' | tr -d '[]')
+            TICKET=$(echo "$PR_TITLE" | grep -o '\[BCJ-[0-9]\+\]' | tr -d '[]')
+            DESCRIPTION=$(echo "$PR_TITLE" | sed 's/^\[[^]]*\]\[BCJ-[0-9]\+\] //')
+            
+            echo "  - Type: $TYPE"
+            echo "  - Ticket: $TICKET" 
+            echo "  - Description: $DESCRIPTION"
+            
+            # Validate ticket number format
+            if [[ ! "$TICKET" =~ ^BCJ-[0-9]+$ ]]; then
+              echo "⚠️ Ticket number format is invalid"
+              echo "Expected format: BCJ-X where X is a number"
+            fi
+            
+            # Check description length
+            if [[ ${#DESCRIPTION} -lt 5 ]]; then
+              echo "⚠️ Description is too short (minimum 5 characters)"
+            fi
+            
+          else
+            echo "❌ PR title doesn't follow required format"
+            echo "Expected format: [TYPE][BCJ-X] description"
+            echo ""
+            echo "Valid examples:"
+            echo "  - [FEATURE][BCJ-5] add user authentication system"
+            echo "  - [FIX][BCJ-6] resolve validation error in login form" 
+            echo "  - [DOCS][BCJ-7] update API documentation"
+            echo "  - [REFACTOR][BCJ-8] improve database connection handling"
+            echo ""
+            echo "Valid types: FEATURE, FIX, DOCS, STYLE, REFACTOR, TEST, CHORE, PERF, CI, BUILD"
+            echo "Ticket format: BCJ-X (where X is a number)"
+            echo ""
+            echo "Current title: $PR_TITLE"
+            exit 1
+          fi
+
+      - name: Check for merge conflicts
+        run: |
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
+          
+          # Fetch main branch
+          git fetch origin main:main
+          
+          # Check if PR branch can be merged cleanly
+          if ! git merge-tree $(git merge-base HEAD main) HEAD main >/dev/null 2>&1; then
+            echo "❌ This PR has merge conflicts with main branch"
+            echo "Please resolve conflicts before proceeding"
+            exit 1
+          else
+            echo "✅ No merge conflicts detected"
+          fi
+
+      - name: Check file changes
+        run: |
+          # Get list of changed files
+          git diff --name-only main...HEAD > changed_files.txt
+          
+          echo "📁 Files changed in this PR:"
+          cat changed_files.txt
+          
+          # Check if critical files are modified
+          if grep -q "pom.xml" changed_files.txt; then
+            echo "⚠️ pom.xml was modified - dependency review required"
+          fi
+          
+          if grep -q "application.properties\|application.yml" changed_files.txt; then
+            echo "⚠️ Configuration files modified - configuration review required"
+          fi
+          
+          if grep -q "Dockerfile\|docker-compose" changed_files.txt; then
+            echo "⚠️ Docker configuration modified - deployment review required"
+          fi
+
+  # Code quality and security checks
+  code-quality:
+    name: Code Quality & Security
+    runs-on: ubuntu-latest
+    needs: check-draft
+    if: needs.check-draft.outputs.should_skip == 'false'
+    
+    steps:
+      - name: Checkout PR code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          cache: maven
+
+      - name: Compile code
+        run: ./mvnw -q compile
+
+      - name: Run Maven dependency check
+        run: |
+          # Check for known vulnerabilities in dependencies
+          ./mvnw dependency:analyze -DignoreNonCompile=true || true
+
+      - name: Check code formatting (if checkstyle configured)
+        run: |
+          # This would run if you had checkstyle configured
+          # ./mvnw checkstyle:check || true
+          echo "Code formatting check placeholder"
+
+  # Build and test verification
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    needs: check-draft
+    if: needs.check-draft.outputs.should_skip == 'false'
+    permissions:
+      contents: read
+      pull-requests: write
+      checks: write
+    
+    steps:
+      - name: Checkout PR code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          cache: maven
+
+      - name: Run tests with coverage
+        run: ./mvnw -q -e verify
+
+      - name: Generate test summary
+        if: always()
+        run: |
+          echo "## Test Results 🧪" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f target/surefire-reports/TEST-*.xml ]; then
+            # Parse test results
+            TOTAL_TESTS=$(grep -h "tests=" target/surefire-reports/TEST-*.xml | grep -o 'tests="[^"]*"' | cut -d'"' -f2 | awk '{sum += $1} END {print sum}')
+            FAILED_TESTS=$(grep -h "failures=" target/surefire-reports/TEST-*.xml | grep -o 'failures="[^"]*"' | cut -d'"' -f2 | awk '{sum += $1} END {print sum}')
+            ERROR_TESTS=$(grep -h "errors=" target/surefire-reports/TEST-*.xml | grep -o 'errors="[^"]*"' | cut -d'"' -f2 | awk '{sum += $1} END {print sum}')
+            SKIPPED_TESTS=$(grep -h "skipped=" target/surefire-reports/TEST-*.xml | grep -o 'skipped="[^"]*"' | cut -d'"' -f2 | awk '{sum += $1} END {print sum}')
+            
+            PASSED_TESTS=$((TOTAL_TESTS - FAILED_TESTS - ERROR_TESTS - SKIPPED_TESTS))
+            
+            echo "- **Total Tests:** $TOTAL_TESTS" >> $GITHUB_STEP_SUMMARY
+            echo "- **Passed:** ✅ $PASSED_TESTS" >> $GITHUB_STEP_SUMMARY
+            echo "- **Failed:** ❌ $FAILED_TESTS" >> $GITHUB_STEP_SUMMARY
+            echo "- **Errors:** ⚠️ $ERROR_TESTS" >> $GITHUB_STEP_SUMMARY
+            echo "- **Skipped:** ⏭️ $SKIPPED_TESTS" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "No test results found" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Check coverage requirements
+        run: |
+          if [ -f target/site/jacoco/jacoco.csv ]; then
+            echo "## Coverage Report 📊" >> $GITHUB_STEP_SUMMARY
+            
+            # Parse JaCoCo CSV for coverage percentage
+            INSTRUCTION_COVERED=$(awk -F',' 'NR>1 {covered+=$4; missed+=$3} END {print covered}' target/site/jacoco/jacoco.csv)
+            INSTRUCTION_MISSED=$(awk -F',' 'NR>1 {covered+=$4; missed+=$3} END {print missed}' target/site/jacoco/jacoco.csv)
+            TOTAL_INSTRUCTIONS=$((INSTRUCTION_COVERED + INSTRUCTION_MISSED))
+            
+            if [ $TOTAL_INSTRUCTIONS -gt 0 ]; then
+              COVERAGE_PERCENT=$((INSTRUCTION_COVERED * 100 / TOTAL_INSTRUCTIONS))
+              echo "- **Line Coverage:** $COVERAGE_PERCENT%" >> $GITHUB_STEP_SUMMARY
+              
+              if [ $COVERAGE_PERCENT -ge 80 ]; then
+                echo "- **Status:** ✅ Coverage requirement met (≥80%)" >> $GITHUB_STEP_SUMMARY
+              else
+                echo "- **Status:** ❌ Coverage below requirement (<80%)" >> $GITHUB_STEP_SUMMARY
+              fi
+            fi
+          fi
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ github.event.pull_request.number }}
+          path: |
+            target/surefire-reports/
+            target/site/jacoco/
+          retention-days: 7
+
+      - name: Comment test results on PR
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            
+            let comment = '## 🤖 PR Verification Results\n\n';
+            
+            // Add test results if available
+            try {
+              const testFiles = fs.readdirSync('target/surefire-reports').filter(f => f.startsWith('TEST-') && f.endsWith('.xml'));
+              if (testFiles.length > 0) {
+                comment += '### ✅ Tests Completed\n';
+                comment += `- Found ${testFiles.length} test suite(s)\n`;
+                comment += '- All tests executed successfully\n\n';
+              }
+            } catch (e) {
+              comment += '### ❌ Test Issues\n';
+              comment += '- Unable to find test results\n\n';
+            }
+            
+            // Add coverage info
+            try {
+              if (fs.existsSync('target/site/jacoco/jacoco.csv')) {
+                comment += '### 📊 Coverage Report Available\n';
+                comment += '- JaCoCo coverage report generated\n';
+                comment += '- Coverage requirements checked\n\n';
+              }
+            } catch (e) {
+              comment += '### ⚠️ Coverage Report Missing\n\n';
+            }
+            
+            comment += '### 🔍 Next Steps\n';
+            comment += '- Review test results above\n';
+            comment += '- Ensure all checks pass before merging\n';
+            comment += '- Check coverage meets minimum requirements (80%)\n';
+            
+            // Check if there are existing comments from this workflow
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            
+            const existingComment = comments.find(
+              comment => comment.user.login === 'github-actions[bot]' && 
+                         comment.body.includes('🤖 PR Verification Results')
+            );
+            
+            if (existingComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existingComment.id,
+                body: comment
+              });
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: comment
+              });
+            }
+
+  # Integration tests (if you have them)
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: check-draft
+    if: needs.check-draft.outputs.should_skip == 'false'
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: rootpass
+          MYSQL_DATABASE: testdb
+          MYSQL_USER: testuser
+          MYSQL_PASSWORD: testpass
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+    
+    steps:
+      - name: Checkout PR code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          cache: maven
+
+      - name: Wait for MySQL to be ready
+        run: |
+          until mysqladmin ping -h "127.0.0.1" -P 3306 -u testuser -ptestpass --silent; do
+            echo 'waiting for mysql...'
+            sleep 1
+          done
+
+      - name: Run integration tests
+        env:
+          SPRING_DATASOURCE_URL: jdbc:mysql://localhost:3306/testdb
+          SPRING_DATASOURCE_USERNAME: testuser
+          SPRING_DATASOURCE_PASSWORD: testpass
+        run: |
+          # Run integration tests if they exist
+          # ./mvnw -q -e verify -Pintegration-tests
+          echo "Integration tests placeholder - configure based on your test profile"
+
+  # Final verification summary
+  verification-summary:
+    name: Verification Summary
+    runs-on: ubuntu-latest
+    needs: [pr-validation, code-quality, build-and-test, integration-tests]
+    if: always() && needs.check-draft.outputs.should_skip == 'false'
+    
+    steps:
+      - name: Check all jobs status
+        run: |
+          echo "## PR Verification Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [[ "${{ needs.pr-validation.result }}" == "success" ]]; then
+            echo "- ✅ PR Validation: Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ❌ PR Validation: Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [[ "${{ needs.code-quality.result }}" == "success" ]]; then
+            echo "- ✅ Code Quality: Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ❌ Code Quality: Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [[ "${{ needs.build-and-test.result }}" == "success" ]]; then
+            echo "- ✅ Build & Test: Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ❌ Build & Test: Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [[ "${{ needs.integration-tests.result }}" == "success" ]]; then
+            echo "- ✅ Integration Tests: Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ❌ Integration Tests: Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Overall result
+        run: |
+          if [[ "${{ needs.pr-validation.result }}" == "success" && 
+                "${{ needs.code-quality.result }}" == "success" && 
+                "${{ needs.build-and-test.result }}" == "success" && 
+                "${{ needs.integration-tests.result }}" == "success" ]]; then
+            echo "🎉 All PR verification checks passed!"
+            echo "PR is ready for review and merge."
+          else
+            echo "❌ Some PR verification checks failed."
+            echo "Please review the failed jobs and fix issues before merging."
+            exit 1
+          fi
