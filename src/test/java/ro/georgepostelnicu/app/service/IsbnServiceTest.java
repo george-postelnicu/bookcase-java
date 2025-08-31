@@ -1,6 +1,5 @@
 package ro.georgepostelnicu.app.service;
 
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import ro.georgepostelnicu.app.AbstractIntegrationTest;
@@ -10,11 +9,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static ro.georgepostelnicu.app.exception.EntityValidationException.ENTITY_VALIDATION_FAILURE;
 import static ro.georgepostelnicu.app.model.EntityName.BOOK;
+import static ro.georgepostelnicu.app.service.IsbnService.INVALID_ISBN;
+import static ro.georgepostelnicu.app.service.IsbnService.INVALID_ISBN_CHECK_DIGIT;
 
 class IsbnServiceTest extends AbstractIntegrationTest {
 
-    public static final String INVALID_ISBN = "Invalid ISBN";
-    public static final String INVALID_ISBN_CHECK_DIGIT = "Invalid ISBN check digit";
     private final IsbnService service;
 
     @Autowired
@@ -64,5 +63,19 @@ class IsbnServiceTest extends AbstractIntegrationTest {
                 () -> service.isValid("ISBN-10 0-596-52068-8"));
 
         assertEquals(ex.getMessage(), String.format(ENTITY_VALIDATION_FAILURE, BOOK, INVALID_ISBN_CHECK_DIGIT));
+    }
+
+    @Test
+    void isbnCheck_isSuccessful_whenIsbn13CheckDigitCalculationReturnsZero() {
+        // This ISBN-13 will have remainder = 0, so check digit calculation returns "0"
+        // 978-0-13-149505-0 is a valid ISBN-13 where the check digit calculation results in remainder 0
+        service.isValid("978-0-13-149505-0");
+    }
+
+    @Test
+    void isbnCheck_isSuccessful_whenIsbn13CheckDigitCalculationReturnsNonZero() {
+        // This ISBN-13 will have remainder != 0, so check digit calculation returns String.valueOf(10 - remainder)
+        // 978-0-596-52068-7 is a valid ISBN-13 where the check digit calculation results in remainder != 0
+        service.isValid("978-0-596-52068-7");
     }
 }

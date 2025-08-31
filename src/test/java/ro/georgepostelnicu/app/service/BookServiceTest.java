@@ -2,6 +2,7 @@ package ro.georgepostelnicu.app.service;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 import ro.georgepostelnicu.app.AbstractIntegrationTest;
 import ro.georgepostelnicu.app.DataCommon;
 import ro.georgepostelnicu.app.dto.book.BookDto;
@@ -25,6 +26,8 @@ import static ro.georgepostelnicu.app.model.CoverType.SOFTCOVER_WITH_DUST_JACKET
 import static ro.georgepostelnicu.app.model.EntityName.BOOK;
 import static ro.georgepostelnicu.app.model.StatusType.HAVE;
 import static ro.georgepostelnicu.app.service.BookService.NAME_IS_NOT_INCLUDED_IN_FULL_TITLE;
+import static ro.georgepostelnicu.app.service.BookService.NAME_IS_REQUIRED;
+import static ro.georgepostelnicu.app.service.IsbnService.ISBN_IS_REQUIRED;
 
 
 class BookServiceTest extends AbstractIntegrationTest {
@@ -99,7 +102,7 @@ class BookServiceTest extends AbstractIntegrationTest {
 
         EntityValidationException ex = assertThrows(EntityValidationException.class, () -> service.create(dto));
 
-        assertEquals(String.format(ENTITY_VALIDATION_FAILURE, BOOK, "Name is not included in full title!"), ex.getMessage());
+        assertEquals(String.format(ENTITY_VALIDATION_FAILURE, BOOK, NAME_IS_NOT_INCLUDED_IN_FULL_TITLE), ex.getMessage());
     }
 
     @Test
@@ -191,6 +194,85 @@ class BookServiceTest extends AbstractIntegrationTest {
         EntityAlreadyExistException ex = assertThrows(EntityAlreadyExistException.class, () -> service.update(book.getId(), dto));
 
         assertEquals(String.format(ENTITY_ALREADY_HAS_COLLECTION, BOOK, Set.of(dto.getName(), dto.getBarcode())), ex.getMessage());
+    }
+
+    @Test
+    @Transactional
+    void update_doesNotRemoveAuthorsKeywordsAndLanguages_whenAuthorKeywordsAndLanguageNamesAreEmpty() {
+        BookDto dto = oneHundredStepsThrough20thCenturyEstonianArchitecture();
+        Book book = service.create(dto);
+
+        dto.setAuthors(Set.of());
+        dto.setKeywords(Set.of());
+        dto.setLanguages(Set.of());
+
+        Book updatedBook = service.update(book.getId(), dto);
+        assertEquals(book.getAuthors().size(), updatedBook.getAuthors().size());
+        assertEquals(book.getKeywords().size(), updatedBook.getKeywords().size());
+        assertEquals(book.getLanguages().size(), updatedBook.getLanguages().size());
+    }
+
+    @Test
+    @Transactional
+    void update_doesNotRemoveAuthorsKeywordsAndLanguages_whenAuthorKeywordsAndLanguageNamesAreNull() {
+        BookDto dto = oneHundredStepsThrough20thCenturyEstonianArchitecture();
+        Book book = service.create(dto);
+        dto.setAuthors(null);
+        dto.setKeywords(null);
+        dto.setLanguages(null);
+
+        Book updatedBook = service.update(book.getId(), dto);
+        assertEquals(book.getAuthors().size(), updatedBook.getAuthors().size());
+        assertEquals(book.getKeywords().size(), updatedBook.getKeywords().size());
+        assertEquals(book.getLanguages().size(), updatedBook.getLanguages().size());
+    }
+
+    @Test
+    @Transactional
+    void update_throwsException_whenIsbnIsNull() {
+        BookDto dto = landscapesOfIdentity();
+        Book book = service.create(dto);
+        dto.setIsbn(null);
+
+        EntityValidationException ex = assertThrows(EntityValidationException.class, () -> service.update(book.getId(), dto));
+        assertEquals(String.format(ENTITY_VALIDATION_FAILURE, BOOK, ISBN_IS_REQUIRED), ex.getMessage());
+    }
+
+    @Test
+    @Transactional
+    void update_throwsException_whenNameIsNull() {
+        BookDto dto = landscapesOfIdentity();
+        Book book = service.create(dto);
+        dto.setName(null);
+
+        EntityValidationException ex = assertThrows(EntityValidationException.class, () -> service.update(book.getId(), dto));
+        assertEquals(String.format(ENTITY_VALIDATION_FAILURE, BOOK, NAME_IS_REQUIRED), ex.getMessage());
+    }
+
+    @Test
+    void update_returnsSuccessfully_whenBarcodeIsNull() {
+        BookDto dto = landscapesOfIdentity();
+        Book book = service.create(dto);
+        dto.setBarcode(null);
+
+        Book updatedBook = service.update(book.getId(), dto);
+        assertNull(updatedBook.getBarcode());
+    }
+
+    @Test
+    void create_returnsSuccessfully_whenBarcodeIsNull() {
+        BookDto dto = landscapesOfIdentity();
+        dto.setBarcode(null);
+        Book book = service.create(dto);
+        assertNull(book.getBarcode());
+    }
+
+    @Test
+    void create_throwsException_whenISBNIsNull() {
+        BookDto dto = landscapesOfIdentity();
+        dto.setIsbn(null);
+        EntityValidationException ex = assertThrows(EntityValidationException.class, () -> service.create(dto));
+        assertEquals(String.format(ENTITY_VALIDATION_FAILURE, BOOK, ISBN_IS_REQUIRED), ex.getMessage());
     }
 
     private static Set<String> getAuthorNames(Set<Author> authors) {

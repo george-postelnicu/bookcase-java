@@ -15,10 +15,11 @@ services:
       - "9000:8080"
     networks:
       - bookcase-network
+    restart: unless-stopped
 
   db:
-    image: mysql:latest
-    restart: always
+    image: mysql:8.4
+    restart: unless-stopped
     environment:
       MYSQL_DATABASE: library
       MYSQL_USER: spring
@@ -31,13 +32,13 @@ services:
     networks:
       - bookcase-network
     healthcheck:
-      test: "mysqladmin ping -h localhost -u root -pThisIsClassified --protocol=tcp 2> /dev/null"
-      interval: 2s
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p${MYSQL_ROOT_PASSWORD} --protocol=tcp || exit 1"]
+      interval: 5s
       timeout: 20s
-      retries: 10
+      retries: 5
 
   phpmyadmin:
-    image: phpmyadmin/phpmyadmin:latest
+    image: phpmyadmin:5.2
     restart: no
     depends_on:
       - db

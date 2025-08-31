@@ -28,6 +28,7 @@ import static ro.georgepostelnicu.app.model.EntityName.BOOK;
 @Service
 public class BookService {
     public static final String NAME_IS_NOT_INCLUDED_IN_FULL_TITLE = "Name is not included in full title!";
+    public static final String NAME_IS_REQUIRED = "Name is required!";
     private final BookRepository repository;
     private final IsbnService isbnService;
     private final AuthorService authorService;
@@ -76,6 +77,10 @@ public class BookService {
     @Transactional(propagation = REQUIRED)
     public Book update(Long id, BookDto updatedDto) {
         Book existingBook = read(id);
+
+        if (updatedDto.getName() == null) {
+            throw new EntityValidationException(BOOK, NAME_IS_REQUIRED);
+        }
 
         if (!existingBook.getName().equalsIgnoreCase(updatedDto.getName()) &&
                 repository.existsByNameIgnoreCase(updatedDto.getName())) {
