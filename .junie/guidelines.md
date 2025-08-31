@@ -4,12 +4,12 @@ Audience: Experienced Java/Spring developers contributing to this codebase.
 
 1. Build and Runtime Configuration
 - Toolchain
-  - Java 21 (Temurin recommended). Preview features are enabled for both compilation and tests.
+  - Java 24 (Temurin recommended). Preview features are enabled for both compilation and tests.
   - Maven Wrapper is provided. Use ./mvnw to ensure plugin versions match the repo.
-  - Core libs: Spring Boot 3.2.x, Spring Data JPA, Flyway, MapStruct.
+  - Core libs: Spring Boot 3.5.x, Spring Data JPA, Flyway, MapStruct.
 - Maven specifics (pom.xml)
   - maven-compiler-plugin
-    - source/target: 21
+    - source/target: 24
     - enablePreview: true
     - MapStruct annotation processor configured; make sure your IDE recognizes it for generated mappers (target/generated-sources/annotations).
   - maven-surefire-plugin
@@ -86,7 +86,7 @@ Audience: Experienced Java/Spring developers contributing to this codebase.
   - docker/Dockerfile expects target/*.jar. Run ./mvnw -q -DskipTests package (or full verify) before docker compose up.
   - On schema changes, rebuild the app image so Flyway migrations are included. The DB data persists in the bookcase_data volume; you may need to drop it to test clean migrations: docker compose down -v.
 - Conventions
-  - Java: 21, JUnit 5, AssertJ or JUnit assertions. Keep tests deterministic and independent.
+  - Java: 24, JUnit 5, AssertJ or JUnit assertions. Keep tests deterministic and independent.
   - Packages
     - controller: REST endpoints + GlobalControllerAdvice
     - service: business logic
@@ -105,4 +105,4 @@ Audience: Experienced Java/Spring developers contributing to this codebase.
 - Run one method: ./mvnw -Dtest=BookControllerTest#create_isSuccessful test
 
 Notes
-- These guidelines intentionally skip generic Java/Maven basics and focus on details unique to this repository (Java 21 + preview, H2 in MySQL mode with Flyway, cleaning strategy, and Docker wiring).
+- These guidelines intentionally skip generic Java/Maven basics and focus on details unique to this repository (Java 24 + preview, H2 in MySQL mode with Flyway, cleaning strategy, and Docker wiring).

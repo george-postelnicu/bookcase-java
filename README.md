@@ -1,5 +1,9 @@
 # bookcase-java
 
+## prerequisites
+
+- Java 24 (Temurin recommended)
+
 ## build
 
 ```shell
