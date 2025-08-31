@@ -5,6 +5,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 import ro.georgepostelnicu.app.dto.book.BookDto;
 import ro.georgepostelnicu.app.dto.book.BookResponseDto;
 import ro.georgepostelnicu.app.mapper.BookMapper;
@@ -34,6 +35,7 @@ public class BookController {
     }
 
     @GetMapping()
+    @Transactional(readOnly = true)
     ResponseEntity<Page<BookResponseDto>> searchBooks(
             @RequestParam(name = "page", defaultValue = "0") Integer page,
             @RequestParam(name = "size", defaultValue = "20") Integer size,
